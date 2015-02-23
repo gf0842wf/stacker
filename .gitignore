@@ -1,3 +1,8 @@
+.*
+frameworks
+publish
+runtime
+
 # Object files
 *.o
 *.ko
