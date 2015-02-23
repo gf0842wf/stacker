@@ -8,7 +8,7 @@ require "cocos/cocos2d/OpenglConstants"
 
 local function main()
     cox.setrso(G.W, G.H, 2)
-    cox.d:setDisplayStats(true)
+    cox.d:setDisplayStats(false)
     math.randomseed(os.time())
 
     G.switch("hello")

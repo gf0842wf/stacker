@@ -1,3 +1,5 @@
+local CURRENT_ACTION = 1001
+
 local S = class("GameScene", function() 
     return cc.Scene:create()
 end)
@@ -9,11 +11,12 @@ function S.create(reload)
     s.basey = 152
     s.basew = 360
     s.baseh = 93  -- the cake's height
-    s.precision = 20 -- min width of block
+    s.precision = 15 -- min width of block
     s.floors = {} -- the stack
     s.speed = 180
     s.edge = {left=52, right=584}
     s.floor_num = nil
+    s.paused = false
     
     if reload then
         s.loadres()
@@ -23,7 +26,7 @@ function S.create(reload)
     s.layer = s:alayer()
     s:addChild(s.layer)
     s.ui_layer = s:new_ui_layer()
-    s:addChild(s.ui_layer)
+    s:addChild(s.ui_layer, 10)
     s:newblock()
     
     return s
@@ -41,15 +44,18 @@ function S:new_bg_layer()
     local bgsize = bg:getContentSize()
     local bg1 = cox.newspr{on=layer, tex="scene1/bg1.jpg", y=bgsize.height, ac={0.5,0}}
     local hill = cox.newspr{on=layer, texf="hill.png", y=400}
-    local cloud1 = cox.newspr{on=layer, texf="cloud-1.png", x=0, y=900}
-    local cloud2 = cox.newspr{on=layer, texf="cloud-2.png", x=200, y=700}
-    local cloud3 = cox.newspr{on=layer, texf="cloud-3.png", x=500, y=600}
     local ground = cox.newspr{on=layer, texf="ground.png", y=0, ac={0.5,0}}
-    local desk = cox.newspr{on=layer, texf="desk.png", y=0, ac={0.5,0}}
 
-    function movcloud(cloud, speed)
+    function movcloud(x, y)
+        local cloud = cox.newspr{
+            on=layer, 
+            texf=string.format("cloud-%d.png", math.random(1,3)), 
+            x=x, 
+            y=y
+        }
         local x, y = cloud:getPosition()
         local size = cloud:getContentSize()
+        local speed = math.random(5,10)
         cloud:runact{
             {"move", (x+size.width/2)/speed, -size.width/2, y},
             {"move", 0, G.W+size.width/2, y},
@@ -57,15 +63,19 @@ function S:new_bg_layer()
             {"repeat", -1}
         }
     end
-    movcloud(cloud1, 5)
-    movcloud(cloud2, 10)
-    movcloud(cloud3, 5)
+    movcloud(500, 600)
+    movcloud(200, 700)
+    movcloud(0,   900)
+    movcloud(600, 1100)
+    movcloud(200, 1200)
     
     return layer
 end
 
 function S:alayer()
     local layer = cc.Layer:create()
+    
+    local desk = cox.newspr{on=layer, texf="desk.png", y=0, ac={0.5,0}}
     
     -- on keyback pressed
     cox.bindkb(layer, function()
@@ -89,13 +99,13 @@ function S:new_ui_layer()
         on=layer,
         normal="sound-11.png", 
         pressed="sound-12.png",
-        x=70, y=G.H-70
+        x=G.W-70, y=G.H-70
     }
     local soundclose_b = cox.button{
         on=layer,
         normal="sound-21.png", 
         pressed="sound-22.png",
-        x=70, y=G.H-70,
+        x=G.W-70, y=G.H-70,
         show=false
     }
     soundopen_b:ontouch(function()
@@ -107,15 +117,48 @@ function S:new_ui_layer()
         soundopen_b:setVisible(true)
     end)
 
-    local num = cc.Label:createWithCharMap("num-1.png", 52, 67, 48)
-    num:setBlendFunc({src=cc.BLEND_SRC, dst=cc.BLEND_DST})
-    num:setString(string.format("%d", #self.floors))
-    num:setPosition(G.W/2, G.H-70)
-    num:setScale(0.8)
-    layer:addChild(num)
+    local pause_b = cox.button{
+        on=layer,
+        normal="pause-1.png", 
+        pressed="pause-2.png",
+        x=70, y=G.H-70
+    }
+    pause_b:ontouch(function()
+        if self.paused then
+            self:resume()
+        else
+            self:pause()
+        end
+    end)
+    
+    local num = cox.charlabel("num-1.png", 52, 67, 48, {
+        on=layer,
+        x=G.W/2, 
+        y=G.H-70,
+        scale=0.8,
+    })
+    num:setstr(#self.floors)
     self.floor_num = num
     
     return layer
+end
+
+function S:pause()
+    if self.current then
+        local action = self.current:getActionByTag(CURRENT_ACTION)
+        action:setSpeed(0)
+    end
+    self:open_menu()
+    self.paused = true
+end
+
+function S:resume()
+    if self.current then
+        local action = self.current:getActionByTag(CURRENT_ACTION)
+        action:setSpeed(1)
+    end
+    self:close_menu()
+    self.paused = false
 end
 
 function S:gettopy()
@@ -143,23 +186,28 @@ function S:newblock()
     block:set{x=x}
     local x, y = block:getPosition()
     local speed = self.speed
+    local action = nil
     if x <= 0 then
-        block:runact{
+        action = cox.act{
             {"moveb", (G.W-size.width)/speed, G.W-size.width, 0},
             {"moveb", (G.W-size.width)/speed, -(G.W-size.width), 0},
-            {"repeat", -1}
+            {"repeat", -1},
+            {"speed", 1}
         }
     else
-        block:runact{
+        action = cox.act{
             {"moveb", (G.W-size.width)/speed, -(G.W-size.width), 0},
             {"moveb", (G.W-size.width)/speed, G.W-size.width, 0},
-            {"repeat", -1}
+            {"repeat", -1},
+            {"speed", 1}
         }
     end
+    action:setTag(CURRENT_ACTION)
+    block:runAction(action)
 end
 
 function S:ontouch(touch)
-    if self.current then
+    if self.current and not self.paused then
         self:putdown()
     end
 end
@@ -210,7 +258,7 @@ function S:putdown()
     self.basew = right - left
     self.floor_num:setString(string.format("%d", #self.floors))
     if #self.floors % 2 == 0 and self.basew > 100 then
-        block:runact{"fadeout", 0.5}
+        block:runact{"fadeout", 0.3}
         self:putpillars(left, right, y)
     end
     self:newblock()
@@ -219,10 +267,10 @@ function S:putdown()
     end
 end
 
-function S:newpillar(x, y)
+function S:newpillar(id, x, y)
     local p = cox.newspr{
         on=self.layer,
-        tex="scene1/pillar-1.png",
+        tex=string.format("scene1/pillar-%d.png", id),
         x=x,
         y=y,
         z=-1
@@ -230,11 +278,12 @@ function S:newpillar(x, y)
 end
 
 function S:putpillars(left, right, y)
-    self:newpillar(left+20, y)
-    self:newpillar(right-20, y)
+    local id = math.random(1,2)
+    self:newpillar(id, left+20, y)
+    self:newpillar(id, right-20, y)
     local w = right - left - 100
     for x = left+50, right-50, 60 do
-        self:newpillar(x, y)
+        self:newpillar(id, x, y)
     end
 end
 
@@ -282,12 +331,13 @@ function S:lose()
         x=G.W/2-60,
         y=G.H-200
     }
-    
-    local num = cc.Label:createWithCharMap("num-1.png", 52, 67, 48)
-    num:setBlendFunc({src=cc.BLEND_SRC, dst=cc.BLEND_DST})
-    num:setString(string.format("%d", best))
-    num:setPosition(G.W/2+140, G.H-200)
-    ui_layer:addChild(num)
+
+    local num = cox.charlabel("num-1.png", 52, 67, 48, {
+        on=ui_layer,
+        x=G.W/2+140, 
+        y=G.H-200,
+    })
+    num:setstr(best)
     
     local restart_b = cox.button{
         on=ui_layer,
@@ -299,6 +349,59 @@ function S:lose()
         G.switch("game")
     end)
     
+end
+
+function S:open_menu()
+    local bg = cox.newspr{
+        on=self.layer,
+        name="menu",
+        texf="menu-bg.png",
+        x=G.W,
+        y=G.H/2+50,
+        ac={1,0.5}
+    }
+    local size = bg:getContentSize()
+    local resume_b = cox.button{
+        on=bg,
+        normal="resume-1.png",
+        pressed="resume-2.png",
+        x=size.width-30,
+        y=300,
+        ac={1,0.5},
+    }
+    resume_b:ontouch(function()
+        self:close_menu()
+        self:resume()
+    end)
+    local about_b = cox.button{
+        on=bg,
+        normal="aboutus-1.png",
+        pressed="aboutus-2.png",
+        x=size.width-30,
+        y=190,
+        ac={1,0.5},
+    }
+    about_b:ontouch(function() 
+    
+    end)
+    local restart_b = cox.button{
+        on=bg,
+        normal="restart-1.png",
+        pressed="restart-2.png",
+        x=size.width-30,
+        y=80,
+        ac={1,0.5},
+    }
+    restart_b:ontouch(function() 
+        G.switch("game")
+    end)
+end
+
+function S:close_menu()
+    local menu = self.layer:getChildByName("menu")
+    if menu then
+        menu:removeFromParent()
+    end
 end
 
 return S

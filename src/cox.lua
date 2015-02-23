@@ -501,6 +501,27 @@ function cox.button(arg)
     return spr
 end
 
+--[[ create charmap label
+eg.
+local num = cox.charlabel("num-1.png", 52, 67, 48, {
+on=layer, 
+x=100, 
+y=100
+})
+]]
+function cox.charlabel(file, width, height, init_code, arg)
+    local spr = cc.Label:createWithCharMap(file, width, height, init_code)
+    cox.setspr(spr, arg)
+    -- add meta methods
+    spr.setstr = function(this, format, ...)
+        this:setString(string.format(tostring(format), ...))
+    end
+    spr.set = cox.setspr
+    spr.runact = cox.runact
+    spr.ontouch = cox.ontouch
+    return spr
+end
+
 -- add dragging sensitive to ccui.PageView
 function cox.setpv(pageview, arg)
     local smooth = arg.smooth or 8
