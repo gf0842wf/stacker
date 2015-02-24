@@ -14,6 +14,7 @@ function S.create(reload)
     s.precision = 15 -- min width of block
     s.floors = {} -- the stack
     s.speed = 180
+    s.speed_incr = 25
     s.edge = {left=52, right=584}
     s.floor_num = nil
     s.paused = false
@@ -230,7 +231,7 @@ function S:putdown()
         block:set{x=edge.left}
     end
     
-    if right < edge.left or left > edge.right then
+    if right < edge.left+5 or left > edge.right-5 then
         cox.safedel(block)
         self:drop(x, y, size.width, 1)
         self:lose()
@@ -254,7 +255,10 @@ function S:putdown()
     edge.right = right
     
     table.append(self.floors, block)
-    self.speed = self.speed + 30
+    if #self.floors % 10 == 0 then
+        self.speed_incr = math.max(0, self.speed_incr - #self.floors/10 * 5)
+    end
+    self.speed = self.speed + self.speed_incr
     self.basew = right - left
     self.floor_num:setString(string.format("%d", #self.floors))
     if #self.floors % 2 == 0 and self.basew > 100 then

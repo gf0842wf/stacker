@@ -57,6 +57,7 @@ function S:alayer()
     start_b:ontouch(function()
         G.switch("game", true)
     end)
+    
     return layer
 end
 

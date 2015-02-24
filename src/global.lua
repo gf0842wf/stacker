@@ -1,13 +1,14 @@
 local G = {}
 
-local BG_MUSIC = "music/bg.mp3"
-local SELECT_SOUND = "music/select.mp3"
-
+G.version = "0.4"
 G.debug = true
 
 -- design resolution
 G.W = 640
 G.H = 960
+
+local BG_MUSIC = "music/bg.mp3"
+local SELECT_SOUND = "music/select.mp3"
 
 function G.openms()
     cox.setud("music_on", true)
